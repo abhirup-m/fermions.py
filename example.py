@@ -1,4 +1,4 @@
-import iterdiag
+import iterDiag
 import base
 import time
 
@@ -15,5 +15,5 @@ for step in range(1, numSteps+1):
     numSitesFlow.append(2 + step)
 retainSize = 50
 t = time.time()
-e, v = iterdiag.IterDiag(hamFlow, basis, numSitesFlow, retainSize)
+e, v = iterDiag.IterDiag(hamFlow, basis, numSitesFlow, retainSize)
 print(time.time() - t)

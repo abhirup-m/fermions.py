@@ -1,4 +1,6 @@
 import scipy.linalg
+import numpy as np
+import base
 
 def AddDicts(dict1, dict2):
     outputDict = dict1.copy()
@@ -10,7 +12,11 @@ def AddDicts(dict1, dict2):
     return outputDict
 
 
-def Eigen(matrix, basisStates):
+def Eigen(hamiltonian, basisStates, diagElements=[]):
+    if len(diagElements) != 0:
+        matrix = base.OperatorMatrix(basisStates, hamiltonian) + np.diag(diagElements)
+    else:
+        matrix = base.OperatorMatrix(basisStates, hamiltonian)
     eigenValues, eigenStates = scipy.linalg.eigh(matrix)
     eigenVecs = [{} for _ in eigenValues]
     for (j, vector) in enumerate(eigenStates):

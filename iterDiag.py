@@ -1,6 +1,9 @@
 import base
 import itertools
 import numpy as np
+import eigen
+import time
+from multiprocessing import Pool
 
 def ExpandBasis(basis, sector, eigvals, numNew):
     expandedBasis = {}
@@ -32,6 +35,7 @@ def ClassifyBasis(basisStates):
 
 def IterDiag(hamFlow, basisStates, numSitesFlow, retainSize, occupSectors = lambda x, N: True):
     assert len(numSitesFlow) == len(hamFlow)
+
     classifiedBasis = ClassifyBasis(basisStates)
     diagElementsClassified = {k: np.zeros(len(v)) for (k,v) in classifiedBasis.items()}
 
@@ -42,9 +46,20 @@ def IterDiag(hamFlow, basisStates, numSitesFlow, retainSize, occupSectors = lamb
     for (i, hamiltonian) in enumerate(hamFlow):
         newClassifiedBasis = {}
         newDiagElementsClassified = {}
-        for (sector, basis) in classifiedBasis.items():
-            matrix = base.OperatorMatrix(basis, hamiltonian) + np.diag(diagElementsClassified[sector])
-            eigvl, eigvc = base.Eigen(matrix, basis)
+        t = time.time()
+        spectrum = {}
+        with Pool() as pool:
+            workers = {sector: pool.apply_async(eigen.Eigen, (hamiltonian, basis), 
+                                        dict(diagElements=diagElementsClassified[sector])) 
+                       for (sector, basis) in classifiedBasis.items()}
+            spectrum = {sector: worker.get() for (sector, worker) in workers.items()}
+        # for (sector, basis) in classifiedBasis.items():
+        #     spectrum[sector] = eigen.Eigen(hamiltonian, basis, diagElements=diagElementsClassified[sector])
+        print(time.time() - t)
+        print("-------")
+        for (sector, (eigvl, eigvc)) in spectrum.items():
+            basis = classifiedBasis[sector]
+            eigvl, eigvc = eigen.Eigen(hamiltonian, basis, diagElements=diagElementsClassified[sector])
             eigvalFlow[i][sector] = eigvl
             eigvecFlow[i][sector] = eigvc
             if i == len(hamFlow) - 1:
@@ -60,6 +75,8 @@ def IterDiag(hamFlow, basisStates, numSitesFlow, retainSize, occupSectors = lamb
                 newClassifiedBasis[nk] = np.concatenate((newClassifiedBasis[nk], basis))
                 newDiagElementsClassified[nk] = np.concatenate((newDiagElementsClassified[nk], newDiagElements[nk]))
 
+        if not newClassifiedBasis:
+            continue
         classifiedBasis = {}
         diagElementsClassified = {}
         for (sector, basis) in newClassifiedBasis.items():
